@@ -1,3 +1,5 @@
+github.com/Velocidex/chroma v0.6.8-0.20200418131129-82edc291369c h1:ipQHX4FX5HKRAUA6n8EQGZK/ROLXHQ7tVwtoEwo57Hg=
+github.com/Velocidex/chroma v0.6.8-0.20200418131129-82edc291369c/go.mod h1:sko8vR34/90zvl5QdcUdvzL3J8NKjAUx9va9jPuFNoM=
 github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38 h1:smF2tmSOzy2Mm+0dGI2AIUHY+w0BUc+4tn40djz7+6U=
 github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38/go.mod h1:r7bzyVFMNntcxPZXK3/+KdruV1H5KSlyVY0gc+NgInI=
 github.com/alecthomas/colour v0.0.0-20160524082231-60882d9e2721 h1:JHZL0hZKJ1VENNfmXvHbgYlbUOvpzYzvy2aZU5gXVeo=
