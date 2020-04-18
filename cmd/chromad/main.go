@@ -102,7 +102,7 @@ func render(req *renderRequest) (*renderResponse, error) {
 	buf := &strings.Builder{}
 	options := []html.Option{}
 	if req.Classes {
-		options = append(options, html.WithClasses(), html.Standalone())
+		options = append(options, html.WithClasses(true), html.Standalone(true))
 	}
 	formatter := html.New(options...)
 	err = formatter.Format(buf, style, tokens)
@@ -153,7 +153,7 @@ func main() {
 	}
 	ctx := kong.Parse(&cli, kong.Configuration(konghcl.Loader))
 
-	log.Println("Starting")
+	log.Printf("Starting on http://%s\n", cli.Bind)
 
 	router := mux.NewRouter()
 	router.Handle("/", http.HandlerFunc(index)).Methods("GET")
