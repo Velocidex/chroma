@@ -41,7 +41,7 @@ command, for Go.
 		List       bool             `help:"List lexers, styles and formatters."`
 		Unbuffered bool             `help:"Do not buffer output."`
 		Trace      bool             `help:"Trace lexer states as they are traversed."`
-		Check      bool             `help:"Do not format, check for tokenization errors instead."`
+		Check      bool             `help:"Do not format, check for tokenisation errors instead."`
 		Filename   string           `help:"Filename to use for selecting a lexer when reading from stdin."`
 
 		Lexer     string `help:"Lexer to use when formatting." default:"autodetect" short:"l" enum:"${lexers}"`
@@ -53,6 +53,7 @@ command, for Go.
 		HTML                      bool   `help:"Enable HTML mode (equivalent to '--formatter html')."`
 		HTMLPrefix                string `help:"HTML CSS class prefix." placeholder:"PREFIX"`
 		HTMLStyles                bool   `help:"Output HTML CSS styles."`
+		HTMLAllStyles             bool   `help:"Output all HTML CSS styles, including redundant ones."`
 		HTMLOnly                  bool   `help:"Output HTML fragment."`
 		HTMLInlineStyles          bool   `help:"Output HTML with inline styles (no classes)."`
 		HTMLTabWidth              int    `help:"Set the HTML tab width." default:"8"`
@@ -117,15 +118,12 @@ func main() {
 	}
 	defer w.Flush() // nolint: errcheck
 
-	if cli.JSON {
+	switch {
+	case cli.JSON:
 		cli.Formatter = "json"
-	}
-
-	if cli.HTML {
+	case cli.HTML:
 		cli.Formatter = "html"
-	}
-
-	if cli.SVG {
+	case cli.SVG:
 		cli.Formatter = "svg"
 	}
 
@@ -142,54 +140,18 @@ func main() {
 
 	// Dump styles.
 	if cli.HTMLStyles {
-		formatter := html.New(html.WithClasses())
+		options := []html.Option{html.WithClasses(true)}
+		if cli.HTMLAllStyles {
+			options = append(options, html.WithAllClasses(true))
+		}
+		formatter := html.New(options...)
 		err = formatter.WriteCSS(w, style)
 		ctx.FatalIfErrorf(err)
 		return
 	}
 
 	if cli.Formatter == "html" {
-		options := []html.Option{
-			html.TabWidth(cli.HTMLTabWidth),
-			html.BaseLineNumber(cli.HTMLBaseLine),
-		}
-		if cli.HTMLPrefix != "" {
-			options = append(options, html.ClassPrefix(cli.HTMLPrefix))
-		}
-		if !cli.HTMLInlineStyles {
-			options = append(options, html.WithClasses())
-		}
-		if !cli.HTMLOnly {
-			options = append(options, html.Standalone())
-		}
-		if cli.HTMLLines {
-			options = append(options, html.WithLineNumbers())
-		}
-		if cli.HTMLLinesTable {
-			options = append(options, html.LineNumbersInTable())
-		}
-		if cli.HTMLPreventSurroundingPre {
-			options = append(options, html.PreventSurroundingPre())
-		}
-		if len(cli.HTMLHighlight) > 0 {
-			ranges := [][2]int{}
-			for _, span := range strings.Split(cli.HTMLHighlight, ",") {
-				parts := strings.Split(span, ":")
-				if len(parts) > 2 {
-					ctx.Fatalf("range should be N[:M], not %q", span)
-				}
-				start, err := strconv.ParseInt(parts[0], 10, 64)
-				ctx.FatalIfErrorf(err, "min value of range should be integer not %q", parts[0])
-				end := start
-				if len(parts) == 2 {
-					end, err = strconv.ParseInt(parts[1], 10, 64)
-					ctx.FatalIfErrorf(err, "max value of range should be integer not %q", parts[1])
-				}
-				ranges = append(ranges, [2]int{int(start), int(end)})
-			}
-			options = append(options, html.HighlightLines(ranges))
-		}
-		formatters.Register("html", html.New(options...))
+		configureHTMLFormatter(ctx)
 	}
 	if len(cli.Files) == 0 {
 		contents, err := ioutil.ReadAll(os.Stdin)
@@ -206,6 +168,39 @@ func main() {
 			}
 		}
 	}
+}
+
+func configureHTMLFormatter(ctx *kong.Context) {
+	options := []html.Option{
+		html.TabWidth(cli.HTMLTabWidth),
+		html.BaseLineNumber(cli.HTMLBaseLine),
+		html.ClassPrefix(cli.HTMLPrefix),
+		html.WithAllClasses(cli.HTMLAllStyles),
+		html.WithClasses(!cli.HTMLInlineStyles),
+		html.Standalone(!cli.HTMLOnly),
+		html.WithLineNumbers(cli.HTMLLines),
+		html.LineNumbersInTable(cli.HTMLLinesTable),
+		html.PreventSurroundingPre(cli.HTMLPreventSurroundingPre),
+	}
+	if len(cli.HTMLHighlight) > 0 {
+		ranges := [][2]int{}
+		for _, span := range strings.Split(cli.HTMLHighlight, ",") {
+			parts := strings.Split(span, ":")
+			if len(parts) > 2 {
+				ctx.Fatalf("range should be N[:M], not %q", span)
+			}
+			start, err := strconv.ParseInt(parts[0], 10, 64)
+			ctx.FatalIfErrorf(err, "min value of range should be integer not %q", parts[0])
+			end := start
+			if len(parts) == 2 {
+				end, err = strconv.ParseInt(parts[1], 10, 64)
+				ctx.FatalIfErrorf(err, "max value of range should be integer not %q", parts[1])
+			}
+			ranges = append(ranges, [2]int{int(start), int(end)})
+		}
+		options = append(options, html.HighlightLines(ranges))
+	}
+	formatters.Register("html", html.New(options...))
 }
 
 func listAll() {

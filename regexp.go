@@ -34,9 +34,13 @@ func (e EmitterFunc) Emit(groups []string, lexer Lexer) Iterator { return e(grou
 func ByGroups(emitters ...Emitter) Emitter {
 	return EmitterFunc(func(groups []string, lexer Lexer) Iterator {
 		iterators := make([]Iterator, 0, len(groups)-1)
-		// NOTE: If this panics, there is a mismatch with groups
-		for i, group := range groups[1:] {
-			iterators = append(iterators, emitters[i].Emit([]string{group}, lexer))
+		if len(emitters) != len(groups)-1 {
+			iterators = append(iterators, Error.Emit(groups, lexer))
+			// panic(errors.Errorf("number of groups %q does not match number of emitters %v", groups, emitters))
+		} else {
+			for i, group := range groups[1:] {
+				iterators = append(iterators, emitters[i].Emit([]string{group}, lexer))
+			}
 		}
 		return Concaterator(iterators...)
 	})
@@ -255,7 +259,7 @@ func (l *LexerState) Get(key interface{}) interface{} {
 }
 
 // Iterator returns the next Token from the lexer.
-func (l *LexerState) Iterator() Token {
+func (l *LexerState) Iterator() Token { // nolint: gocognit
 	for l.Pos < len(l.Text) && len(l.Stack) > 0 {
 		// Exhaust the iterator stack, if any.
 		for len(l.iteratorStack) > 0 {
@@ -406,6 +410,9 @@ func (r *RegexLexer) Tokenise(options *TokeniseOptions, text string) (Iterator, 
 	if options == nil {
 		options = defaultOptions
 	}
+	if options.EnsureLF {
+		text = ensureLF(text)
+	}
 	if !options.Nested && r.config.EnsureNL && !strings.HasSuffix(text, "\n") {
 		text += "\n"
 	}
@@ -432,4 +439,23 @@ func matchRules(text []rune, pos int, rules []*CompiledRule) (int, *CompiledRule
 		}
 	}
 	return 0, &CompiledRule{}, nil
+}
+
+// replace \r and \r\n with \n
+// same as strings.ReplaceAll but more efficient
+func ensureLF(text string) string {
+	buf := make([]byte, len(text))
+	var j int
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if c == '\r' {
+			if i < len(text)-1 && text[i+1] == '\n' {
+				continue
+			}
+			c = '\n'
+		}
+		buf[j] = c
+		j++
+	}
+	return string(buf[:j])
 }
